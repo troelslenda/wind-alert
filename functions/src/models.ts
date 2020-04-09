@@ -1,3 +1,4 @@
+
 export interface TimeSerie {
     time: string,
     temp: number,
@@ -23,6 +24,16 @@ export interface TimeSerie {
     windspeed10: number,
     windspeed50: number,
     windspeed90: number
+  }
+
+  export interface WindTime {
+    time: Date,
+    windDegree: number | null,
+    windSpeed: number | null,
+    windGust: number | null,
+    windspeed10: number | null,
+    windspeed50: number | null,
+    windspeed90: number | null
   }
   
   export interface WeatherResponse {
