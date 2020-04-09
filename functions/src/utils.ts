@@ -2,34 +2,11 @@ import { WindTime } from "./models";
 import * as moment from "moment";
 import * as admin from "firebase-admin";
 
-// export const fetchData = (url: string) =>
-//   new Promise<WeatherResponse>((resolve, reject): void => {
-//     get(url, (res) => {
-//       let body = "";
-//       res.on("data", (chunk) => (body += chunk));
-
-//       res.on("end", () => {
-//         try {
-//           resolve(mapToWeatherResponse(JSON.parse(body)));
-//         } catch (error) {
-//           reject(error.message);
-//         }
-//       });
-//     });
-//   });
-
-
-
 export const readingIsRelevant = (
   data: WindTime[],
   previousData: WindTime[]
 ): boolean =>
-  // exclude old and new rows.
-  // exclude old ones from previous data.
   {
-
-    console.log('data ', data.length)
-    console.log('data prev', previousData.length)
     // Find the number of differences between previous and current set of WindTime.
     const difference: number =
       data.length -

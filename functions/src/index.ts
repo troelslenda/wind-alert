@@ -72,5 +72,6 @@ export const wind = functions
   .region("europe-west2")
   .firestore.document("windReadings/{city}/readings/{reading}")
   .onCreate((snap, context) => {
+    // do stuff. Send sms to subscribers!
     return;
   });
