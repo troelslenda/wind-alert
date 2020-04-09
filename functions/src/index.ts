@@ -1,62 +1,76 @@
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
 import * as moment from "moment";
-import { fetchData, shouldWeFetchWeather, calculateRefreshTime,  readingIsRelevant, mapData } from "./utils";
+import {
+  dataIsOld,
+  determineNextRequest,
+  readingIsRelevant,
+} from "./utils";
 import { WeatherResponse } from "./models";
+import { ApiService } from "./api.service";
 
 try {
-    admin.initializeApp();
-  } catch (e) {}
-  
+  admin.initializeApp();
+} catch (e) {}
 
 export const searchAlerts = functions
-  .runWith({memory: '256MB', timeoutSeconds: 6})
-  .region('europe-west2')
-  .pubsub
-  .schedule("3 * * * *")
+  .runWith({ memory: "256MB", timeoutSeconds: 6 })
+  .region("europe-west2")
+  .pubsub.schedule("3 * * * *")
   .timeZone("Europe/Copenhagen")
-  .onRun(async _ => {
+  .onRun(async (_) => {
     const windReadingQuery: admin.firestore.QuerySnapshot = await admin
       .firestore()
-      .collection("windReadings").orderBy('refreshTime', 'asc').limit(1)
+      .collection("windReadings")
+      .orderBy("refreshTime", "asc")
+      .limit(1)
       .get();
-    
+
     if (windReadingQuery.empty) {
-        throw new Error('Your application must have at least one valid windReadings document');
+      throw new Error(
+        "Your application must have at least one valid windReadings document"
+      );
     }
-    const windReadingDoc: admin.firestore.DocumentSnapshot = windReadingQuery.docs[0]
-      if (windReadingDoc.exists && shouldWeFetchWeather(windReadingDoc)) {
-        const data: WeatherResponse = await fetchData(
-          functions.config().windapp.apitemplate.replace(
-            'CITY_CODE', windReadingDoc.data()?.location.key
-          )
-        );
+    const windReadingDoc: admin.firestore.DocumentSnapshot =
+      windReadingQuery.docs[0];
+    if (windReadingDoc.exists && dataIsOld(windReadingDoc)) {
+      const service = new ApiService(functions.config().windapp.apitemplate);
+      const data: WeatherResponse = await service.fetch(
+        windReadingDoc.data()?.location.key
+      );
 
-        let latestReading: admin.firestore.DocumentReference = windReadingDoc.data()?.latestReading;
-        /*if (windReadingDoc.data()?.latestReading) {
-            console.log(windReadingDoc.data()?.latestReading)
-            latestReading = windReadingDoc.data()?.latestReading;
-        }*/
-        if (readingIsRelevant(data)) {
-            latestReading = await windReadingDoc.ref.collection('readings').add({data: data.timeserie.map(item => mapData(item)), lastupdate: data.lastupdate})
-        }
-        console.log(latestReading)
+      console.log('data retrieved for: ', data.city)
 
-        return windReadingDoc.ref.set({
-          refreshTime: moment().add(
-            calculateRefreshTime(data.timeserie),
-            "hours"
-          ),
-          //latestReading : latestReading,
-          location: {
-            city_name: data.city
-          },
-        }, {merge:true});
-        
+      let latestReadingRef: admin.firestore.DocumentReference = windReadingDoc.data()
+        ?.latestReading;
+
+        const latestReadingDoc = latestReadingRef ? await latestReadingRef.get(): null;
+
+      if (
+        !latestReadingRef ||
+        latestReadingDoc?.exists && readingIsRelevant(data.wind, latestReadingDoc.data()?.wind)
+      ) {
+        latestReadingRef = await windReadingDoc.ref
+          .collection("readings")
+          .add({ wind: data.wind, lastupdate: data.lastupdate });
       }
+      return windReadingDoc.ref.set(
+        {
+          refreshTime: moment().add(determineNextRequest(data.wind), "hours"),
+          latestReading: latestReadingRef,
+          location: {
+            city_name: data.city,
+          },
+        },
+        { merge: true }
+      );
+    }
     return false;
   });
 
-  export const readingCreated = functions.firestore.document('windReadings/{city}/readings/{reading}').onCreate((snap, context) => {
-      return;
+export const wind = functions
+  .region("europe-west2")
+  .firestore.document("windReadings/{city}/readings/{reading}")
+  .onCreate((snap, context) => {
+    return;
   });
