@@ -58,12 +58,11 @@ export const determineNextRequest = (data: WindTime[]): number => {
 
     console.log("setting new refreshtime", {
       refreshIn,
-      ...data.slice(0, 25).map((item: WindTime) => {
-        return {
-          speed: item.windSpeed,
-          gust: item.windGust,
-          time: item.time,
-        };
+      wind: data.slice(0, 25).map((item: WindTime) => {
+        return [
+          item.windSpeed,
+          item.windGust
+        ]
       }),
     });
   } catch (e) {

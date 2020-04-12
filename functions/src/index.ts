@@ -48,7 +48,9 @@ export const searchAlerts = functions
 
       if (
         !latestReadingRef ||
-        latestReadingDoc?.exists && readingIsRelevant(data.wind, latestReadingDoc.data()?.wind)
+        latestReadingDoc?.exists && readingIsRelevant(data.wind, latestReadingDoc.data()?.wind.map((x:any) => {
+          return {...x, time: x.time.toDate()}
+        }))
       ) {
         latestReadingRef = await windReadingDoc.ref
           .collection("readings")
